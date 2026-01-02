@@ -5402,9 +5402,155 @@
       );
     }
 
-    // Render the app
+    // SHA256 Hash function
+    async function sha256(message) {
+      const msgBuffer = new TextEncoder().encode(message);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      return hashHex;
+    }
+
+    // Password Protection Component
+    function PasswordProtection({ children }) {
+      const [isAuthenticated, setIsAuthenticated] = useState(false);
+      const [password, setPassword] = useState('');
+      const [error, setError] = useState('');
+      const [isLoading, setIsLoading] = useState(true);
+      const [isVerifying, setIsVerifying] = useState(false);
+
+      // SHA256 hash of the correct password (demo2024)
+      // To change password: hash your new password and update this value
+      const correctPasswordHash = '43c27b4e263fa191a6a7ec198cd4d5b47d17413c49d77dc533a01720707e3202';
+
+      // Check session storage on mount
+      useEffect(() => {
+        const authStatus = sessionStorage.getItem('auth_authenticated');
+        if (authStatus === 'true') {
+          setIsAuthenticated(true);
+        }
+        setIsLoading(false);
+      }, []);
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setIsVerifying(true);
+
+        try {
+          // Hash the entered password
+          const enteredPasswordHash = await sha256(password);
+
+          // Compare hashes
+          if (enteredPasswordHash === correctPasswordHash) {
+            sessionStorage.setItem('auth_authenticated', 'true');
+            setIsAuthenticated(true);
+            setPassword('');
+          } else {
+            setError('Incorrect password. Please try again.');
+            setPassword('');
+          }
+        } catch (err) {
+          setError('An error occurred. Please try again.');
+          setPassword('');
+        } finally {
+          setIsVerifying(false);
+        }
+      };
+
+      // Show loading state while checking session
+      if (isLoading) {
+        return (
+          <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="text-gray-600">Loading...</div>
+          </div>
+        );
+      }
+
+      // Show password modal if not authenticated
+      if (!isAuthenticated) {
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4">
+              <div className="text-center mb-6">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                  <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Password Required</h2>
+                <p className="text-gray-600">Please enter the password to access this page</p>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    id="password"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setError('');
+                    }}
+                    disabled={isVerifying}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    placeholder="Enter password"
+                    autoFocus
+                    autoComplete="off"
+                  />
+                </div>
+
+                {error && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="text-sm text-red-800">{error}</span>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isVerifying || !password}
+                  className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isVerifying ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Verifying...
+                    </>
+                  ) : (
+                    'Access Page'
+                  )}
+                </button>
+              </form>
+
+              <div className="mt-6 text-center">
+                <p className="text-xs text-gray-500">
+                  This page is password protected
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // Render the protected content
+      return children;
+    }
+
+    // Render the app with password protection
     const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<AutomationCenterDemo />);
+    root.render(
+      <PasswordProtection>
+        <AutomationCenterDemo />
+      </PasswordProtection>
+    );
 
   </script>
 </body>
